@@ -12,139 +12,160 @@
  *  Copyright (c) 2014-2019. All rights reserved.
  */
 
-const async = require('async')
-const path = require('path')
-const _ = require('lodash')
-const winston = require('../logger')
-const pkg = require('../../package')
-const Chance = require('chance')
-const Status = require('../models/ticketStatus')
-const counterSchema = require('../models/counters')
+const async = require('async');
+const path = require('path');
+const _ = require('lodash');
+const winston = require('../logger');
+const pkg = require('../../package');
+const Chance = require('chance');
+const Status = require('../models/ticketStatus');
+const counterSchema = require('../models/counters');
 
-const installController = {}
-installController.content = {}
+const installController = {};
+installController.content = {};
 
 installController.index = function (req, res) {
-  const content = {}
-  content.title = 'Install Trudesk'
-  content.layout = false
+  const content = {};
+  content.title = 'Install Trudesk';
+  content.layout = false;
 
-  content.bottom = 'Trudesk v' + pkg.version
-  content.isDocker = process.env.TRUDESK_DOCKER || false
+  content.bottom = 'Trudesk v' + pkg.version;
+  content.isDocker = process.env.TRUDESK_DOCKER || false;
 
-  res.render('install', content)
-}
+  res.render('install', content);
+};
 
 installController.elastictest = function (req, res) {
-  const data = req.body
-  const CONNECTION_URI = data.host + ':' + data.port
+  const data = req.body;
+  const CONNECTION_URI = data.host + ':' + data.port;
 
   const child = require('child_process').fork(path.join(__dirname, '../../src/install/elasticsearchtest'), {
-    env: { FORK: 1, NODE_ENV: global.env, ELASTICSEARCH_URI: CONNECTION_URI }
-  })
-  global.forks.push({ name: 'elastictest', fork: child })
+    env: { FORK: 1, NODE_ENV: global.env, ELASTICSEARCH_URI: CONNECTION_URI },
+  });
+  global.forks.push({ name: 'elastictest', fork: child });
 
   child.on('message', function (data) {
-    if (data.error) return res.status(400).json({ success: false, error: data.error })
-    return res.json({ success: true })
-  })
+    if (data.error) return res.status(400).json({ success: false, error: data.error });
+    return res.json({ success: true });
+  });
 
   child.on('close', function () {
-    winston.debug('ElasticSearchTest process terminated.')
-  })
-}
+    winston.debug('ElasticSearchTest process terminated.');
+  });
+};
 
 installController.mongotest = function (req, res) {
-  const data = req.body
-  const dbPassword = encodeURIComponent(data.password)
+  const data = req.body;
+  const dbPassword = encodeURIComponent(data.password);
   let CONNECTION_URI =
-    'mongodb://' + data.username + ':' + dbPassword + '@' + data.host + ':' + data.port + '/' + data.database
+    'mongodb://' + data.username + ':' + dbPassword + '@' + data.host + ':' + data.port + '/' + data.database;
 
   if (data.port === '---')
-    CONNECTION_URI = 'mongodb+srv://' + data.username + ':' + dbPassword + '@' + data.host + '/' + data.database
+    CONNECTION_URI = 'mongodb+srv://' + data.username + ':' + dbPassword + '@' + data.host + '/' + data.database;
 
   const child = require('child_process').fork(path.join(__dirname, '../../src/install/mongotest'), {
-    env: { FORK: 1, NODE_ENV: global.env, MONGOTESTURI: CONNECTION_URI }
-  })
+    env: { FORK: 1, NODE_ENV: global.env, MONGOTESTURI: CONNECTION_URI },
+  });
 
-  global.forks.push({ name: 'mongotest', fork: child })
+  global.forks.push({ name: 'mongotest', fork: child });
   child.on('message', function (data) {
-    if (data.error) return res.status(400).json({ success: false, error: data.error })
+    if (data.error) return res.status(400).json({ success: false, error: data.error });
 
-    return res.json({ success: true })
-  })
+    return res.json({ success: true });
+  });
 
   child.on('close', function () {
-    global.forks = _.without(global.forks, { name: 'mongotest' })
-    winston.debug('MongoTest process terminated')
-  })
-}
+    global.forks = _.without(global.forks, { name: 'mongotest' });
+    winston.debug('MongoTest process terminated');
+  });
+};
 
 installController.existingdb = function (req, res) {
-  const data = req.body
+  const data = req.body;
 
   // Mongo
-  const host = data.host
-  const port = data.port
-  const database = data.database
-  const username = data.username
-  const password = data.password
+  const host = data.host;
+  const port = data.port;
+  const database = data.database;
+  const username = data.username;
+  const password = data.password;
 
   // Write Configfile
-  const fs = require('fs')
-  const chance = new Chance()
-  const configFile = path.join(__dirname, '../../config.yml')
-  const YAML = require('yaml')
+  const fs = require('fs');
+  const chance = new Chance();
+  const configFile = path.join(__dirname, '../../config.yml');
+  const YAML = require('yaml');
   const conf = {
     mongo: {
       host: host,
       port: port,
       username: username,
       password: password,
-      database: database
+      database: database,
     },
     tokens: {
       secret: chance.hash() + chance.md5(),
-      expires: 900 // 15min
-    }
-  }
+      expires: 900, // 15min
+    },
+  };
 
   fs.writeFile(configFile, YAML.stringify(conf), function (err) {
     if (err) {
-      winston.error('FS Error: ' + err.message)
-      return res.status(400).json({ success: false, error: err.message })
+      winston.error('FS Error: ' + err.message);
+      return res.status(400).json({ success: false, error: err.message });
     }
 
-    return res.json({ success: true })
-  })
-}
+    return res.json({ success: true });
+  });
+};
 
-installController.install = function (req, res) {
-  const db = require('../database')
-  const roleSchema = require('../models/role')
-  const roleOrderSchema = require('../models/roleorder')
-  const UserSchema = require('../models/user')
-  const GroupSchema = require('../models/group')
-  const Counters = require('../models/counters')
-  const TicketTypeSchema = require('../models/tickettype')
-  const TicketStatusSchema = require('../models/ticketStatus')
-  const SettingsSchema = require('../models/setting')
+// installController.install = function (req, res) {
+installController.install = function () {
+  const db = require('../database');
+  const roleSchema = require('../models/role');
+  const roleOrderSchema = require('../models/roleorder');
+  const UserSchema = require('../models/user');
+  const GroupSchema = require('../models/group');
+  const Counters = require('../models/counters');
+  const TicketTypeSchema = require('../models/tickettype');
+  const TicketStatusSchema = require('../models/ticketStatus');
+  const SettingsSchema = require('../models/setting');
 
-  const data = req.body
+  // const data = req.body
+  const data = {
+    // please make this body
+    mongo: {
+      host: 'localhost',
+      port: '27017',
+      database: 'trudesk',
+    },
+    account: {
+      username: 'admin',
+      password: 'Admin@123',
+      passconfirm: 'Admin@123',
+      email: 'admin@gmail.com',
+      fullname: 'admin',
+    },
+    elastic: {
+      enable: false,
+      host: '',
+      port: '',
+    },
+  };
 
   // Mongo
-  const host = data['mongo[host]']
-  const port = data['mongo[port]']
-  const database = data['mongo[database]']
-  const username = data['mongo[username]']
-  const password = data['mongo[password]']
+  const host = data['mongo[host]'];
+  const port = data['mongo[port]'];
+  const database = data['mongo[database]'];
+  const username = data['mongo[username]'];
+  const password = data['mongo[password]'];
 
   // ElasticSearch
-  let eEnabled = data['elastic[enable]']
-  if (typeof eEnabled === 'string') eEnabled = eEnabled.toLowerCase() === 'true'
+  let eEnabled = data['elastic[enable]'];
+  if (typeof eEnabled === 'string') eEnabled = eEnabled.toLowerCase() === 'true';
 
-  const eHost = data['elastic[host]']
-  const ePort = data['elastic[port]']
+  const eHost = data['elastic[host]'];
+  const ePort = data['elastic[port]'];
 
   // Account
   const user = {
@@ -152,29 +173,30 @@ installController.install = function (req, res) {
     password: data['account[password]'],
     passconfirm: data['account[cpassword]'],
     email: data['account[email]'],
-    fullname: data['account[fullname]']
-  }
+    fullname: data['account[fullname]'],
+  };
 
-  const dbPassword = encodeURIComponent(password)
-  let conuri = 'mongodb://' + username + ':' + dbPassword + '@' + host + ':' + port + '/' + database
-  if (port === '---') conuri = 'mongodb+srv://' + username + ':' + dbPassword + '@' + host + '/' + database
+  // const dbPassword = encodeURIComponent(password);
+  // let conuri = 'mongodb://' + username + ':' + dbPassword + '@' + host + ':' + port + '/' + database
+  const conuri = 'mongodb://mongo:27017/';
+  // if (port === '---') conuri = 'mongodb+srv://' + username + ':' + dbPassword + '@' + host + '/' + database;
 
   async.waterfall(
     [
       function (next) {
         db.init(function (err) {
-          return next(err)
-        }, conuri)
+          return next(err);
+        }, conuri);
       },
       function (next) {
         const s = new SettingsSchema({
           name: 'gen:version',
-          value: require('../../package.json').version
-        })
+          value: require('../../package.json').version,
+        });
 
         return s.save(function (err) {
-          return next(err)
-        })
+          return next(err);
+        });
       },
       function (next) {
         // if (!eEnabled) return next()
@@ -184,56 +206,56 @@ installController.install = function (req, res) {
               SettingsSchema.create(
                 {
                   name: 'es:enable',
-                  value: typeof eEnabled === 'undefined' ? false : eEnabled
+                  value: typeof eEnabled === 'undefined' ? false : eEnabled,
                 },
                 done
-              )
+              );
             },
             function (done) {
-              if (!eHost) return done()
+              if (!eHost) return done();
               SettingsSchema.create(
                 {
                   name: 'es:host',
-                  value: eHost
+                  value: eHost,
                 },
                 done
-              )
+              );
             },
             function (done) {
-              if (!ePort) return done()
+              if (!ePort) return done();
               SettingsSchema.create(
                 {
                   name: 'es:port',
-                  value: ePort
+                  value: ePort,
                 },
                 done
-              )
-            }
+              );
+            },
           ],
           function (err) {
-            return next(err)
+            return next(err);
           }
-        )
+        );
       },
       function (next) {
         const Counter = new Counters({
           _id: 'tickets',
-          next: 1001
-        })
+          next: 1001,
+        });
 
         Counter.save(function (err) {
-          return next(err)
-        })
+          return next(err);
+        });
       },
       function (next) {
         const Counter = new Counters({
           _id: 'reports',
-          next: 1001
-        })
+          next: 1001,
+        });
 
         Counter.save(function (err) {
-          return next(err)
-        })
+          return next(err);
+        });
       },
       function (next) {
         TicketStatusSchema.create(
@@ -245,7 +267,7 @@ installController.install = function (req, res) {
               order: 0,
               isResolved: false,
               slatimer: true,
-              isLocked: true
+              isLocked: true,
             },
             {
               name: 'Open',
@@ -254,7 +276,7 @@ installController.install = function (req, res) {
               order: 1,
               isResolved: false,
               slatimer: true,
-              isLocked: true
+              isLocked: true,
             },
             {
               name: 'Pending',
@@ -263,7 +285,7 @@ installController.install = function (req, res) {
               order: 2,
               isResolved: false,
               slatimer: false,
-              isLocked: true
+              isLocked: true,
             },
             {
               name: 'Closed',
@@ -272,128 +294,126 @@ installController.install = function (req, res) {
               order: 3,
               isResolved: true,
               slatimer: false,
-              isLocked: true
-            }
+              isLocked: true,
+            },
           ],
           function (err) {
-            if (err) return next(err)
+            if (err) return next(err);
 
-            return next()
+            return next();
           }
-        )
+        );
       },
       function (next) {
         Counters.setCounter('status', 4, function (err) {
-          if (err) return next(err)
+          if (err) return next(err);
 
-          return next()
-        })
+          return next();
+        });
       },
       function (next) {
         const type = new TicketTypeSchema({
-          name: 'Issue'
-        })
+          name: 'Issue',
+        });
 
         type.save(function (err) {
-          return next(err)
-        })
+          return next(err);
+        });
       },
       function (next) {
         const type = new TicketTypeSchema({
-          name: 'Task'
-        })
+          name: 'Task',
+        });
 
         type.save(function (err) {
-          return next(err)
-        })
+          return next(err);
+        });
       },
       function (next) {
         GroupSchema.create({ name: 'Default Group' }, function (err) {
-          if (err) return next(err)
-          return next()
-        })
+          if (err) return next(err);
+          return next();
+        });
       },
       function (next) {
-        const defaults = require('../settings/defaults')
-        const roleResults = {}
-        async.parallel(
-          [
-            function (done) {
-              roleSchema.create(
-                {
-                  name: 'Admin',
-                  description: 'Default role for admins',
-                  grants: defaults.roleDefaults.adminGrants
-                },
-                function (err, role) {
-                  if (err) return done(err)
-                  roleResults.adminRole = role
-                  return done()
-                }
-              )
-            },
-            function (done) {
-              roleSchema.create(
-                {
-                  name: 'Support',
-                  description: 'Default role for agents',
-                  grants: defaults.roleDefaults.supportGrants
-                },
-                function (err, role) {
-                  if (err) return done(err)
-                  roleResults.supportRole = role
-                  return done()
-                }
-              )
-            },
-            function (done) {
-              roleSchema.create(
-                {
-                  name: 'User',
-                  description: 'Default role for users',
-                  grants: defaults.roleDefaults.userGrants
-                },
-                function (err, role) {
-                  if (err) return done(err)
-                  roleResults.userRole = role
-                  return done()
-                }
-              )
-            }
-          ],
+        const defaults = require('../settings/defaults');
+        const roleResults = {};
+        async.series([
+          function (done) {
+            roleSchema.create(
+              {
+                name: 'Admin',
+                description: 'Default role for admins',
+                grants: defaults.roleDefaults.adminGrants,
+              },
+              function (err, role) {
+                if (err) return done(err);
+                roleResults.adminRole = role;
+                return done();
+              }
+            );
+          },
+          function (done) {
+            roleSchema.create(
+              {
+                name: 'Support',
+                description: 'Default role for agents',
+                grants: defaults.roleDefaults.supportGrants,
+              },
+              function (err, role) {
+                if (err) return done(err);
+                roleResults.supportRole = role;
+                return done();
+              }
+            );
+          },
+          function (done) {
+            roleSchema.create(
+              {
+                name: 'User',
+                description: 'Default role for users',
+                grants: defaults.roleDefaults.userGrants,
+              },
+              function (err, role) {
+                if (err) return done(err);
+                roleResults.userRole = role;
+                return done();
+              }
+            );
+          },
           function (err) {
-            return next(err, roleResults)
-          }
-        )
+            return next(err, roleResults);
+          },
+        ]);
       },
       function (roleResults, next) {
-        const TeamSchema = require('../models/team')
+        const TeamSchema = require('../models/team');
         TeamSchema.create(
           {
             name: 'Support (Default)',
-            members: []
+            members: [],
           },
           function (err, team) {
-            return next(err, team, roleResults)
+            return next(err, team, roleResults);
           }
-        )
+        );
       },
       function (defaultTeam, roleResults, next) {
         UserSchema.getUserByUsername(user.username, function (err, admin) {
           if (err) {
-            winston.error('Database Error: ' + err.message)
-            return next('Database Error: ' + err.message)
+            winston.error('Database Error: ' + err.message);
+            return next('Database Error: ' + err.message);
           }
 
           if (!_.isNull(admin) && !_.isUndefined(admin) && !_.isEmpty(admin)) {
-            return next('Username: ' + user.username + ' already exists.')
+            return next('Username: ' + user.username + ' already exists.');
           }
 
           if (user.password !== user.passconfirm) {
-            return next('Passwords do not match!')
+            return next('Passwords do not match!');
           }
 
-          const chance = new Chance()
+          const chance = new Chance();
           const adminUser = new UserSchema({
             username: user.username,
             password: user.password,
@@ -401,75 +421,75 @@ installController.install = function (req, res) {
             email: user.email,
             role: roleResults.adminRole._id,
             title: 'Administrator',
-            accessToken: chance.hash()
-          })
+            accessToken: chance.hash(),
+          });
 
           adminUser.save(function (err, savedUser) {
             if (err) {
-              winston.error('Database Error: ' + err.message)
-              return next('Database Error: ' + err.message)
+              winston.error('Database Error: ' + err.message);
+              return next('Database Error: ' + err.message);
             }
 
             defaultTeam.addMember(savedUser._id, function (err, success) {
               if (err) {
-                winston.error('Database Error: ' + err.message)
-                return next('Database Error: ' + err.message)
+                winston.error('Database Error: ' + err.message);
+                return next('Database Error: ' + err.message);
               }
 
               if (!success) {
-                return next('Unable to add user to Administrator group!')
+                return next('Unable to add user to Administrator group!');
               }
 
               defaultTeam.save(function (err) {
                 if (err) {
-                  winston.error('Database Error: ' + err.message)
-                  return next('Database Error: ' + err.message)
+                  winston.error('Database Error: ' + err.message);
+                  return next('Database Error: ' + err.message);
                 }
 
-                return next(null, defaultTeam)
-              })
-            })
-          })
-        })
+                return next(null, defaultTeam);
+              });
+            });
+          });
+        });
       },
       function (defaultTeam, next) {
-        const DepartmentSchema = require('../models/department')
+        const DepartmentSchema = require('../models/department');
         DepartmentSchema.create(
           {
             name: 'Support - All Groups (Default)',
             teams: [defaultTeam._id],
             allGroups: true,
-            groups: []
+            groups: [],
           },
           function (err) {
-            return next(err)
+            return next(err);
           }
-        )
+        );
       },
       function (next) {
-        if (!process.env.TRUDESK_DOCKER) return next()
-        const S = require('../models/setting')
+        if (!process.env.TRUDESK_DOCKER) return next();
+        const S = require('../models/setting');
         const installed = new S({
           name: 'installed',
-          value: true
-        })
+          value: true,
+        });
 
         installed.save(function (err) {
           if (err) {
-            winston.error('DB Error: ' + err.message)
-            return next('DB Error: ' + err.message)
+            winston.error('DB Error: ' + err.message);
+            return next('DB Error: ' + err.message);
           }
 
-          return next()
-        })
+          return next();
+        });
       },
       function (next) {
-        if (process.env.TRUDESK_DOCKER) return next()
+        if (process.env.TRUDESK_DOCKER) return next();
         // Write Configfile
-        const fs = require('fs')
-        const configFile = path.join(__dirname, '../../config.yml')
-        const chance = new Chance()
-        const YAML = require('yaml')
+        const fs = require('fs');
+        const configFile = path.join(__dirname, '../../config.yml');
+        const chance = new Chance();
+        const YAML = require('yaml');
 
         const conf = {
           mongo: {
@@ -478,52 +498,57 @@ installController.install = function (req, res) {
             username: username,
             password: password,
             database: database,
-            shard: port === '---'
+            shard: port === '---',
           },
           tokens: {
             secret: chance.hash() + chance.md5(),
-            expires: 900 // 15min
-          }
-        }
+            expires: 900, // 15min
+          },
+        };
 
         fs.writeFile(configFile, YAML.stringify(conf), function (err) {
           if (err) {
-            winston.error('FS Error: ' + err.message)
-            return next('FS Error: ' + err.message)
+            winston.error('FS Error: ' + err.message);
+            return next('FS Error: ' + err.message);
           }
 
-          return next(null)
-        })
-      }
+          return next(null);
+        });
+      },
     ],
     function (err) {
       if (err) {
-        return res.status(400).json({ success: false, error: err })
+        winston.error('install Error: ', err);
       }
 
-      res.json({ success: true })
+      winston.info('Install complete');
+      // if (err) {
+      //   return res.status(400).json({ success: false, error: err });
+      // }
+
+      // res.json({ success: true });
     }
-  )
-}
+  );
+};
 
 installController.restart = function (req, res) {
-  const pm2 = require('pm2')
+  const pm2 = require('pm2');
   pm2.connect(function (err) {
     if (err) {
-      winston.error(err)
-      res.status(400).send(err)
-      return
+      winston.error(err);
+      res.status(400).send(err);
+      return;
     }
     pm2.restart('trudesk', function (err) {
       if (err) {
-        res.status(400).send(err)
-        return winston.error(err)
+        res.status(400).send(err);
+        return winston.error(err);
       }
 
-      pm2.disconnect()
-      res.send()
-    })
-  })
-}
+      pm2.disconnect();
+      res.send();
+    });
+  });
+};
 
-module.exports = installController
+module.exports = installController;

@@ -8,6 +8,7 @@
    "888" d888b     `V88V"V8P' `Y8bod88P" `Y8bod8P' 8""888P' o888o o888o
  ========================================================================
  **/
+ const Chance = require('chance')
 
 const express = require('express')
 const router = express.Router()
@@ -18,13 +19,14 @@ const packagejson = require('../../package.json')
 
 function mainRoutes (router, middleware, controllers) {
   router.get('/', middleware.redirectToDashboardIfLoggedIn, controllers.main.index)
-  router.get('/healthz', function (req, res) {
-    return res.status(200).send('OK')
+  router.get('/healthz', async (req, res) => {
+    res.status(200).send('OK!!')
   })
   router.get('/version', function (req, res) {
     return res.json({ version: packagejson.version })
   })
   router.get('/install', function (req, res) {
+    
     return res.redirect('/')
   })
 
@@ -209,6 +211,13 @@ function mainRoutes (router, middleware, controllers) {
     middleware.csrfCheck,
     controllers.tickets.uploadAttachment
   )
+
+  router.post(
+    '/tickets/attachment',
+    controllers.tickets.attachment
+  )
+
+
   router.post('/tickets/uploadmdeimage', middleware.redirectToLogin, controllers.tickets.uploadImageMDE)
 
   // Messages

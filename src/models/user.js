@@ -54,7 +54,7 @@ const userSchema = mongoose.Schema({
   password: { type: String, required: true, select: false },
   fullname: { type: String, required: true, index: true },
   email: { type: String, required: true, unique: true, lowercase: true },
-  role: { type: mongoose.Schema.Types.ObjectId, ref: 'roles', required: true },
+  role: { type: mongoose.Schema.Types.ObjectId, ref: 'roles'},
   lastOnline: Date,
   title: String,
   image: String,

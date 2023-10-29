@@ -542,6 +542,94 @@ ticketsController.single = function (req, res) {
   })
 }
 
+ticketsController.singleTicketByTransaction = function (req, res) {
+  const user = req.user
+  const transaction_id = req.params.transaction_id
+  if (isNaN(transaction_id)) {
+    return res.redirect('/tickets')
+  }
+
+  const content = {}
+  content.title = 'Tickets - ' + req.params.transaction_id
+  content.nav = 'tickets'
+
+  content.data = {}
+  content.data.user = user
+  content.data.common = req.viewdata
+  content.data.ticket = {}
+
+  ticketSchema.getTicketByTransactionId(transaction_id, function (err, ticket) {
+    if (err) return handleError(res, err)
+    if (_.isNull(ticket) || _.isUndefined(ticket)) return res.redirect('/tickets')
+
+    const departmentSchema = require('../models/department')
+    async.waterfall(
+      [
+        function (next) {
+          if (!req.user.role.isAdmin && !req.user.role.isAgent) {
+            return groupSchema.getAllGroupsOfUserNoPopulate(req.user._id, next)
+          }
+
+          departmentSchema.getUserDepartments(req.user._id, function (err, departments) {
+            if (err) return next(err)
+            if (_.some(departments, { allGroups: true })) {
+              return groupSchema.find({}, next)
+            }
+
+            const groups = _.flattenDeep(
+              departments.map(function (d) {
+                return d.groups
+              })
+            )
+
+            return next(null, groups)
+          })
+        },
+        function (userGroups, next) {
+          const hasPublic = permissions.canThis(user.role, 'tickets:public')
+          const groupIds = userGroups.map(function (g) {
+            return g._id.toString()
+          })
+
+          if (!groupIds.includes(ticket.group._id.toString())) {
+            if (ticket.group.public && hasPublic) {
+              // Blank to bypass
+            } else {
+              winston.warn('User access ticket outside of group - UserId: ' + user._id)
+              return res.redirect('/tickets')
+            }
+          }
+
+          if (
+            ticket.owner._id.toString() !== req.user._id.toString() &&
+            !permissions.canThis(user.role, 'tickets:viewall')
+          ) {
+            return res.redirect('/tickets')
+          }
+
+          if (!permissions.canThis(user.role, 'comments:view')) ticket.comments = []
+
+          if (!permissions.canThis(user.role, 'tickets:notes')) ticket.notes = []
+
+          content.data.ticket = ticket
+          content.data.ticket.priorityname = ticket.priority.name
+
+          return next()
+        }
+      ],
+      function (err) {
+        if (err) {
+          winston.warn(err)
+          return res.redirect('/tickets')
+        }
+
+        return res.render('subviews/singleticket', content)
+      }
+    )
+  })
+}
+
+
 ticketsController.uploadImageMDE = function (req, res) {
   const Chance = require('chance')
   const chance = new Chance()
@@ -653,6 +741,7 @@ ticketsController.uploadImageMDE = function (req, res) {
 }
 
 ticketsController.uploadAttachment = function (req, res) {
+  console.log('upload attachment ===========')
   const Busboy = require('busboy')
   const busboy = Busboy({
     headers: req.headers,
@@ -665,6 +754,8 @@ ticketsController.uploadAttachment = function (req, res) {
   const object = {
     ownerId: req.user._id
   }
+
+  console.log('object---------', object)
   let error
 
   const events = []
@@ -702,6 +793,9 @@ ticketsController.uploadAttachment = function (req, res) {
 
     const savePath = path.join(__dirname, '../../public/uploads/tickets', object.ticketId)
     let sanitizedFilename = filename.replace(/[^a-z0-9.]/gi, '_').toLowerCase()
+
+
+    console.log('savePath---------', savePath)
 
     const ext = path.extname(sanitizedFilename)
     const allowedExts = [
@@ -809,6 +903,7 @@ ticketsController.uploadAttachment = function (req, res) {
           path: '/uploads/tickets/' + object.ticketId + '/attachment_' + object.filename,
           type: object.mimetype
         }
+
         ticket.attachments.push(attachment)
 
         const historyItem = {
@@ -838,6 +933,54 @@ ticketsController.uploadAttachment = function (req, res) {
 
   req.pipe(busboy)
 }
+
+
+ticketsController.attachment = function (req, res) {
+  console.log('attachment ===========')
+
+  ticketSchema.getTicketById(req.body.ticketId, function (err, ticket) {
+    if (err) {
+      winston.warn(err)
+      return res.status(500).send(err.message)
+    }
+
+    const image = req.body.attachment
+    const imageName = image.split("/").pop()
+    const url = process.env.REACT_APP_BASE_URL
+    const newurl = url.slice(0,url.length-1)
+    const imagepath = `${newurl}:8989/${imageName}`
+    const type = `image/${imageName.split(".").pop()}`
+    const attachment = {
+      owner: req.body.ownerId,
+      name: imageName,
+      path: imagepath,
+      type: type
+    }
+  
+    ticket.attachments.push(attachment)
+
+    const historyItem = {
+      action: 'ticket:added:attachment',
+      description: 'Attachment ' + imageName + ' was added.',
+      owner: req.body.ownerId
+    }
+    ticket.history.push(historyItem)
+
+    ticket.updated = Date.now()
+    ticket.save(function (err, t) {
+      if (err) {
+        winston.warn(err)
+        return res.status(500).send(err.message)
+      }
+
+      const returnData = {
+        ticket: t
+      }
+      return res.json(returnData)
+    })
+  })
+}
+
 
 function handleError (res, err) {
   if (err) {
