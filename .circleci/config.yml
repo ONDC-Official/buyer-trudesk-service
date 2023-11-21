@@ -1,0 +1,134 @@
+version: 2.1
+orbs:
+  coverage-reporter: codacy/coverage-reporter@13.9.3
+
+executors:
+  docker-executor:
+    docker:
+      - image: circleci/node:16-stretch
+    working_directory: ~/trudesk
+
+commands:
+  yarninstall:
+    steps:
+    - restore_cache:
+        name: Restore Yarn Package Cache
+        keys:
+        - yarn-packages-{{ checksum "yarn.lock" }}
+    - run:
+        name: Install Dependencies
+        command: yarn install --immutable
+    - save_cache:
+        name: Save Yarn Package Cache
+        key: yarn-packages-{{ checksum "yarn.lock" }}
+        paths:
+        - ~/trudesk/.yarn/cache
+
+jobs:
+  build_general:
+    docker:
+    - image: circleci/node:16-stretch
+    - image: mongo:5.0
+    working_directory: ~/trudesk
+    steps:
+    - checkout
+    - yarninstall
+    - run:
+        name: Run Tests
+        command: yarn run test
+    - run:
+        name: Run Build
+        command: yarn run build
+  build_docker_next:
+    executor: docker-executor
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Build Docker Image
+          command: |
+            docker build -t polonel/trudesk:next .
+      - run:
+          name: Push Docker Image (next)
+          command: |
+            echo $DOCKER_PWD | docker login -u $DOCKER_LOGIN --password-stdin
+            docker push polonel/trudesk:next
+  build_develop:
+    docker:
+    - image: circleci/node:16-stretch
+    - image: mongo:5.0
+    working_directory: ~/trudesk
+    resource_class: medium+
+    steps:
+    - checkout
+    - yarninstall
+    - run:
+        name: Run Tests
+        command: yarn run test
+    - run:
+        name: Run Build
+        command: yarn run build
+    - run:
+        name: Run Codacy
+        command: yarn run coverage
+    - coverage-reporter/send_report:
+        coverage-reports: './coverage/lcov.info'
+        project-token: $CODACY_PROJECT_TOKEN
+    parallelism: 2
+  build_production:
+    docker:
+    - image: circleci/node:16-stretch
+    - image: mongo:5.0
+    working_directory: ~/trudesk
+    resource_class: large
+    steps:
+    - checkout
+    - run:
+        name: Install npx
+        command: sudo npm i -g npx --force
+    - yarninstall
+    - run:
+        name: Run Tests
+        command: yarn run test
+    - run:
+        name: Run Codacy
+        command: yarn run coverage
+    - coverage-reporter/send_report:
+        coverage-reports: './coverage/lcov.info'
+        project-token: $CODACY_PROJECT_TOKEN
+    - run:
+        name: Semantic Release
+        command: npx semantic-release
+    parallelism: 2
+
+workflows:
+  version: 2.1
+  general:
+    jobs:
+    - build_general:
+        filters:
+          branches:
+            ignore:
+              - develop
+              - master
+  #nightly:
+  #  triggers:
+  #    - schedule:
+  #        cron: "0 0 * * *"
+  #        filters:
+  #          branches:
+  #            only: develop
+  #  jobs:
+  #    - build_docker_next
+  develop:
+    jobs:
+    - build_develop:
+        filters:
+          branches:
+            only: develop
+  production:
+    jobs:
+    - build_production:
+        filters:
+          branches:
+            only: master
