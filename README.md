@@ -1,4 +1,3 @@
-# buyer-trudesk-service
 <h1 align="center">
 <a href="http://trudesk.io"><img src="http://trudesk.io/TD_Black.png" width="500" /></a>
 <br />Community Edition
