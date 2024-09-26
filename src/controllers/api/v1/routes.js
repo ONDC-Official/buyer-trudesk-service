@@ -199,4 +199,9 @@ module.exports = function (middleware, router, controllers) {
   router.get('/api/v1/editor/assets', apiv1, isAdmin, controllers.editor.getAssets)
   router.post('/api/v1/editor/assets/remove', apiv1, isAdmin, controllers.editor.removeAsset)
   router.post('/api/v1/editor/assets/upload', apiv1, isAdmin, controllers.editor.assetsUpload)
+
+
+  // Issues
+  router.post('/api/v1/issue/save', apiv1, isAdmin, apiCtrl.issues.create)
+
 }

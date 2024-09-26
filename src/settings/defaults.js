@@ -18,7 +18,7 @@ const path = require('path');
 const async = require('async');
 const winston = require('../logger');
 const moment = require('moment-timezone');
-const process = require('process')
+
 const SettingsSchema = require('../models/setting');
 const PrioritySchema = require('../models/ticketpriority');
 
@@ -758,20 +758,6 @@ function addDefaultTeamAndAdmin(callback) {
     },
   };
 
-
-  winston.error(`process.env.TRUDESK_USERNAME${process.env.TRUDESK_USERNAME}`)
-
-  
-
-
-  // {
-  //   username: "admin",
-  //   password: "password",
-  //   passconfirm: "password",
-  //   email: "admin@gmail.com",
-  //   fullname: "Robin",
-  // },
-
   // Mongo
   const host = data['mongo[host]'];
   const port = data['mongo[port]'];
@@ -1032,12 +1018,13 @@ function addDefaultTeamAndAdmin(callback) {
         // const Chance = require('Chance');
         // const RoleSchema = require('../models/role');
         const UserSchema = require('../models/user');
-        const user =  {      
+        const user = {
           username: process.env.TRUDESK_USERNAME,
           password: process.env.TRUDESK_PASSWORD,
           passconfirm: process.env.TRUDESK_PASSWORD,
           email: process.env.TRUDESK_EMAIL,
-          fullname: process.env.TRUDESK_USERNAME,}
+          fullname: process.env.TRUDESK_USERNAME,
+        };
         // const role = RoleSchema.getRoleByName('Admin');
         UserSchema.getUserByUsername(user.username, function (err, admin) {
           if (err) {
