@@ -1987,6 +1987,53 @@ apiTickets.removeAttachment = function (req, res) {
   })
 }
 
+apiTickets.attachment = function (req, res) {
+  console.log('attachment ===========')
+  var ticketModel = require('../../../models/ticket')
+  ticketModel.getTicketById(req.body.ticketId, function (err, ticket) {
+    if (err) {
+      winston.warn(err)
+      return res.status(500).send(err.message)
+    }
+
+    const image = req.body.attachment
+    const imageName = image.split("/").pop()
+    const url = process.env.REACT_APP_BASE_URL
+    const newurl = url.slice(0,url.length-1)
+    const imagepath = `${newurl}/${image}`
+    const type = `image/${imageName.split(".").pop()}`
+    console.log(imagepath,"==imagepath==")
+    const attachment = {
+      owner: req.body.ownerId,
+      name: imageName,
+      path: imagepath,
+      type: type
+    }
+  
+    ticket.attachments.push(attachment)
+
+    const historyItem = {
+      action: 'ticket:added:attachment',
+      description: 'Attachment ' + imageName + ' was added.',
+      owner: req.body.ownerId
+    }
+    ticket.history.push(historyItem)
+
+    ticket.updated = Date.now()
+    ticket.save(function (err, t) {
+      if (err) {
+        winston.warn(err)
+        return res.status(500).send(err.message)
+      }
+
+      const returnData = {
+        ticket: t
+      }
+      return res.json(returnData)
+    })
+  })
+}
+
 /**
  * @api {put} /api/v1/tickets/:id/subscribe Subscribe/Unsubscribe
  * @apiName subscribeTicket

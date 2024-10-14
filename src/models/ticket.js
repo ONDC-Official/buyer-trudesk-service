@@ -117,6 +117,14 @@ const ticketSchema = mongoose.Schema({
   history: [historySchema],
   subscribers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'accounts' }],
   transaction_id: { type: String, unique: true },
+  network_issue_id: { type: String, default: "" },
+  issue_sub_category: { type: String, default: "" },
+  issue_sub_category_long_desc: { type: String, default: "" },
+  network_order_id: { type: String, default: "" },
+  network_item_id: { type: String, default: "" },
+  bap_id: { type: String, default: "" },
+  bpp_id: { type: String, default: "" },
+  domain: { type: String, default: "" }
 })
 
 ticketSchema.index({ deleted: -1, group: 1, status: 1 })

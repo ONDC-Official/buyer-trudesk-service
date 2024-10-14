@@ -3,6 +3,7 @@ var winston = require('../../../logger')
 const apiIssues = {}
 
 apiIssues.create = function (req, res) {
+  console.log('Issue created at /api/v1/issue/save ---------');
   const IssueSchema = require('../../../models/issue')
   const issueSchema = req.body
   winston.warn('Public account creation was attempted while disabled!',issueSchema)
