@@ -24,10 +24,7 @@ const PrioritySchema = require('../models/ticketpriority');
 
 const settingsDefaults = {};
 const roleDefaults = {};
-const settingsDefaults = {};
-const roleDefaults = {};
 
-roleDefaults.userGrants = ['tickets:create view update', 'comments:create view update'];
 roleDefaults.userGrants = ['tickets:create view update', 'comments:create view update'];
 roleDefaults.supportGrants = [
   'tickets:*',
@@ -1530,5 +1527,4 @@ settingsDefaults.init = function (callback) {
   );
 };
 
-module.exports = settingsDefaults;
 module.exports = settingsDefaults;
