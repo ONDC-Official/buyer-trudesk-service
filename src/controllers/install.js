@@ -178,9 +178,10 @@ installController.install = function () {
 
   // const dbPassword = encodeURIComponent(password);
   // let conuri = 'mongodb://' + username + ':' + dbPassword + '@' + host + ':' + port + '/' + database
-  const conuri = process.env.TD_MONGODB_URI';
+  const conuri = process.env.TD_MONGODB_URI;
   // if (port === '---') conuri = 'mongodb+srv://' + username + ':' + dbPassword + '@' + host + '/' + database;
 
+  winston.debug('Mongo URI', process.env.TD_MONGODB_URI );
   async.waterfall(
     [
       function (next) {
