@@ -58,7 +58,7 @@ if (!mongoConnectionUri.username) {
       mongoConnectionUri.database
 }
 
-if (process.env.TD_MONGODB_URI) CONNECTION_URI = process.env.TD_MONGODB_URI
+if (process.env.TD_MONGODB_SERVER) CONNECTION_URI = process.env.TD_MONGODB_SERVER
 
 let options = {
   keepAlive: true,
@@ -66,7 +66,7 @@ let options = {
 };
 
 module.exports.init = async function (callback, connectionString, opts) {
-  if (connectionString) CONNECTION_URI = process.env.TD_MONGODB_URI;
+  if (connectionString) CONNECTION_URI = process.env.TD_MONGODB_SERVER;
   if (opts) options = opts;
   options.dbName = mongoConnectionUri.database;
 
