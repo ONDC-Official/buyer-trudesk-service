@@ -27,38 +27,38 @@ const mongoConnectionUri = {
 };
 
 let CONNECTION_URI = 'mongodb://mongo:27017';
-// if (!mongoConnectionUri.username) {
-//   CONNECTION_URI =
-//     'mongodb://' + mongoConnectionUri.server + ':' + mongoConnectionUri.port + '/' + mongoConnectionUri.database
-//   if (mongoConnectionUri.shard === true)
-//     CONNECTION_URI = 'mongodb+srv://' + mongoConnectionUri.server + '/' + mongoConnectionUri.database
-// } else {
-//   mongoConnectionUri.password = encodeURIComponent(mongoConnectionUri.password)
-//   if (mongoConnectionUri.shard === true)
-//     CONNECTION_URI =
-//       'mongodb+srv://' +
-//       mongoConnectionUri.username +
-//       ':' +
-//       mongoConnectionUri.password +
-//       '@' +
-//       mongoConnectionUri.server +
-//       '/' +
-//       mongoConnectionUri.database
-//   else
-//     CONNECTION_URI =
-//       'mongodb://' +
-//       mongoConnectionUri.username +
-//       ':' +
-//       mongoConnectionUri.password +
-//       '@' +
-//       mongoConnectionUri.server +
-//       ':' +
-//       mongoConnectionUri.port +
-//       '/' +
-//       mongoConnectionUri.database
-// }
+if (!mongoConnectionUri.username) {
+  CONNECTION_URI =
+    'mongodb://' + mongoConnectionUri.server + ':' + mongoConnectionUri.port + '/' + mongoConnectionUri.database
+  if (mongoConnectionUri.shard === true)
+    CONNECTION_URI = 'mongodb+srv://' + mongoConnectionUri.server + '/' + mongoConnectionUri.database
+} else {
+  mongoConnectionUri.password = encodeURIComponent(mongoConnectionUri.password)
+  if (mongoConnectionUri.shard === true)
+    CONNECTION_URI =
+      'mongodb+srv://' +
+      mongoConnectionUri.username +
+      ':' +
+      mongoConnectionUri.password +
+      '@' +
+      mongoConnectionUri.server +
+      '/' +
+      mongoConnectionUri.database
+  else
+    CONNECTION_URI =
+      'mongodb://' +
+      mongoConnectionUri.username +
+      ':' +
+      mongoConnectionUri.password +
+      '@' +
+      mongoConnectionUri.server +
+      ':' +
+      mongoConnectionUri.port +
+      '/' +
+      mongoConnectionUri.database
+}
 
-// if (process.env.TD_MONGODB_URI) CONNECTION_URI = process.env.TD_MONGODB_URI
+if (process.env.TD_MONGODB_URI) CONNECTION_URI = process.env.TD_MONGODB_URI
 
 let options = {
   keepAlive: true,
@@ -66,7 +66,7 @@ let options = {
 };
 
 module.exports.init = async function (callback, connectionString, opts) {
-  if (connectionString) CONNECTION_URI = 'mongodb://mongo:27017';
+  if (connectionString) CONNECTION_URI = process.env.TD_MONGODB_URI;
   if (opts) options = opts;
   options.dbName = mongoConnectionUri.database;
 
