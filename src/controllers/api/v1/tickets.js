@@ -2050,7 +2050,7 @@ apiTickets.attachment = function (req, res) {
     const attachment = {
       owner: req.body.ownerId,
       name: imageName,
-      path: imagepath,
+      path: image,
       type: type
     }
   
