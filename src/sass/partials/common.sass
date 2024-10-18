@@ -194,6 +194,8 @@
   +boxShadow(none !important)
 .no-overflow-x
   overflow-x: hidden !important
+.table-scrollable
+  overflow-x: auto !important
 .relative
   position: relative !important
 .hide
@@ -339,7 +341,10 @@ a.hoverUnderline
 .page-content
   //background: $page_content_bg
   border-top: $page_content_border_top
-//overflow: auto
+  overflow: auto
+
+.adjust-width
+  overflow: auto !important
 
 .page-content-right
   background: $page_content_right_bg

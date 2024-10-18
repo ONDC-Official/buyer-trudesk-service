@@ -745,6 +745,28 @@ apiTickets.singleTicketByTransaction = function (req, res) {
   })
 }
 
+apiTickets.singleTicketByTransaction = function (req, res) {
+  var transaction_id = req.params.transaction_id
+  if (_.isUndefined(transaction_id)) return res.status(200).json({ success: false, error: 'Invalid Ticket' })
+
+  var ticketModel = require('../../../models/ticket')
+
+  ticketModel.getTicketByTransactionId(transaction_id, function (err, ticket) {
+    if (err) return res.send(err)
+
+    if (_.isUndefined(ticket) || _.isNull(ticket)) {
+      return res.status(200).json({ success: false, error: 'Invalid Ticket' })
+    }
+
+    ticket = _.clone(ticket._doc)
+    if (!permissions.canThis(req.user.role, 'tickets:notes')) {
+      delete ticket.notes
+    }
+
+    return res.json({ success: true, ticket: ticket })
+  })
+}
+
 /**
  * @api {put} /api/v1/tickets/:id Update Ticket
  * @apiName updateTicket
@@ -1189,6 +1211,28 @@ apiTickets.updateType = function (req, res) {
     })
   })
 }
+
+
+
+apiTickets.updateTicketType = function (req, res) {
+  const ticketId = req.params.ticketid
+
+  const data = req.body
+  const ticketSchema = require('../../../models/ticket')
+
+  ticketSchema.getTicketById(ticketId, function (err, ticket) {
+    if (err) return res.status(400).json({ success: false, error: err.message })
+
+    ticket.type = data.type
+
+    ticket.save(function (err, t) {
+      if (err) return res.status(400).json({ success: false, error: err.message })
+
+      return res.json({ success: true, type: t })
+    })
+  })
+}
+
 
 
 
@@ -1983,6 +2027,53 @@ apiTickets.removeAttachment = function (req, res) {
           res.json({ success: true, ticket: t })
         })
       })
+    })
+  })
+}
+
+apiTickets.attachment = function (req, res) {
+  console.log('attachment ===========')
+  var ticketModel = require('../../../models/ticket')
+  ticketModel.getTicketById(req.body.ticketId, function (err, ticket) {
+    if (err) {
+      winston.warn(err)
+      return res.status(500).send(err.message)
+    }
+
+    const image = req.body.attachment
+    const imageName = image.split("/").pop()
+    const url = process.env.REACT_APP_BASE_URL
+    const newurl = url.slice(0,url.length-1)
+    const imagepath = `${newurl}/${image}`
+    const type = `image/${imageName.split(".").pop()}`
+    console.log(imagepath,"==imagepath==")
+    const attachment = {
+      owner: req.body.ownerId,
+      name: imageName,
+      path: imagepath,
+      type: type
+    }
+  
+    ticket.attachments.push(attachment)
+
+    const historyItem = {
+      action: 'ticket:added:attachment',
+      description: 'Attachment ' + imageName + ' was added.',
+      owner: req.body.ownerId
+    }
+    ticket.history.push(historyItem)
+
+    ticket.updated = Date.now()
+    ticket.save(function (err, t) {
+      if (err) {
+        winston.warn(err)
+        return res.status(500).send(err.message)
+      }
+
+      const returnData = {
+        ticket: t
+      }
+      return res.json(returnData)
     })
   })
 }

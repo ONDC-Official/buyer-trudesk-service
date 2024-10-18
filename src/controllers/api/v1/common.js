@@ -46,7 +46,7 @@ commonV1.login = function (req, res) {
   var userModel = require('../../../models/user')
   var username = req.body.username
   var password = req.body.password
-
+  console.log("Login api call --------")
   if (_.isUndefined(username) || _.isUndefined(password)) {
     return res.sendStatus(403)
   }

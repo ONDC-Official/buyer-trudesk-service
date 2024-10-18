@@ -69,6 +69,8 @@ const COLLECTION = 'tickets'
  * @property {Array} subscribers An array of user _ids that receive notifications on ticket changes.
  * @property {String} transaction_id ```Required``` ```unique``` Readable Ticket ID
  * 
+ * @property {String} transaction_id ```Required``` ```unique``` Readable Ticket ID
+ * 
  */
 const ticketSchema = mongoose.Schema({
   uid: { type: Number, unique: true, index: true },
@@ -117,6 +119,14 @@ const ticketSchema = mongoose.Schema({
   history: [historySchema],
   subscribers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'accounts' }],
   transaction_id: { type: String, unique: true },
+  network_issue_id: { type: String, default: "" },
+  issue_sub_category: { type: String, default: "" },
+  issue_sub_category_long_desc: { type: String, default: "" },
+  network_order_id: { type: String, default: "" },
+  network_item_id: { type: String, default: "" },
+  bap_id: { type: String, default: "" },
+  bpp_id: { type: String, default: "" },
+  domain: { type: String, default: "" }
 })
 
 ticketSchema.index({ deleted: -1, group: 1, status: 1 })
@@ -1080,6 +1090,35 @@ ticketSchema.statics.getTicketByUid = function (uid, callback) {
 
   return q.exec(callback)
 }
+
+
+/**
+ * Gets Single ticket with given TransactionId.
+ * @memberof Ticket
+ * @static
+ * @method getTicketByTransactionId
+ *
+ * @param {String} transaction_id Unique Id for ticket.
+ * @param {function} callback MongoDB Query Callback
+ */
+ ticketSchema.statics.getTicketByTransactionId = function (transaction_id, callback) {
+  if (_.isUndefined(transaction_id)) return callback('Invalid TransactionId - TicketSchema.GetTicketByTransactionId()', null)
+
+  const self = this
+
+  const q = self
+    .model(COLLECTION)
+    .findOne({ transaction_id, deleted: false })
+    .populate(
+      'owner assignee comments.owner notes.owner subscribers history.owner',
+      'username fullname email role image title'
+    )
+    .populate('type tags status group')
+
+  return q.exec(callback)
+}
+
+
 
 
 /**

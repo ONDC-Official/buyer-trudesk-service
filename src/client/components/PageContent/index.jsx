@@ -27,7 +27,7 @@ class PageContent extends React.Component {
     return (
       <div
         id={this.props.id}
-        className={'page-content no-border-top full-height scrollable ' + (this.props.extraClass || '')}
+        className={'table-scrollable page-content no-border-top full-height scrollable ' + (this.props.extraClass || '')}
         style={{ padding: this.props.padding }}
       >
         <div style={{ paddingBottom: this.props.paddingBottom }}>{this.props.children}</div>
